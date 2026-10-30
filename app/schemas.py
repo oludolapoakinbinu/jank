@@ -5,14 +5,23 @@ from pydantic import BaseModel, ConfigDict, Field
 
 class UserCreate(BaseModel):
     username: str = Field(pattern=r"^[A-Za-z0-9_]{1,32}$")
+    display_name: str = Field(default="", max_length=64)
+    bio: str = Field(default="", max_length=160)
 
 
 class UserOut(BaseModel):
     id: int
     username: str
+    display_name: str
+    bio: str
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ProfileUpdate(BaseModel):
+    display_name: str | None = Field(default=None, max_length=64)
+    bio: str | None = Field(default=None, max_length=160)
 
 
 class FollowCreate(BaseModel):

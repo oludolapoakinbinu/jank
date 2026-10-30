@@ -5,9 +5,13 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Follow, Like, Post, User
-from app.schemas import FollowCreate, PostOut, UserCreate, UserOut
+from app.schemas import FollowCreate, PostOut, ProfileUpdate, UserCreate, UserOut
 
 router = APIRouter(prefix="/users", tags=["users"])
+
+
+def clean_text(value: str | None) -> str:
+    return (value or "").strip()
 
 
 def get_user(db: Session, username: str) -> User:
@@ -30,7 +34,11 @@ def serialize_post(db: Session, post: Post) -> PostOut:
 
 @router.post("", response_model=UserOut, status_code=201)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
-    user = User(username=payload.username)
+    user = User(
+        username=payload.username,
+        display_name=clean_text(payload.display_name),
+        bio=clean_text(payload.bio),
+    )
     db.add(user)
     try:
         db.commit()
@@ -44,6 +52,19 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
 @router.get("/{username}", response_model=UserOut)
 def read_user(username: str, db: Session = Depends(get_db)):
     return get_user(db, username)
+
+
+@router.patch("/{username}", response_model=UserOut)
+def update_profile(username: str, payload: ProfileUpdate, db: Session = Depends(get_db)):
+    user = get_user(db, username)
+    changes = payload.model_dump(exclude_unset=True)
+    if "display_name" in changes:
+        user.display_name = clean_text(changes["display_name"])
+    if "bio" in changes:
+        user.bio = clean_text(changes["bio"])
+    db.commit()
+    db.refresh(user)
+    return user
 
 
 @router.post("/follows", response_model=FollowCreate, status_code=201)
